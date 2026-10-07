@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Magic</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        .glow-btn {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-between p-4 font-sans">
+    
+    <header class="w-full max-w-4xl flex justify-between items-center py-4 border-b border-slate-800">
+        <h1 class="text-xl font-black tracking-wider text-purple-500">AI VIDEO MAGIC</h1>
+        <span class="text-xs bg-purple-900/50 text-purple-300 px-3 py-1 rounded-full">Free Mobile AI</span>
+    </header>
+
+    <main class="w-full max-w-xl bg-slate-900 border border-slate-800 p-5 rounded-2xl my-auto space-y-5">
+        <div>
+            <label class="block text-xs font-medium text-slate-400 mb-2">Apna Idea Likhein (Text):</label>
+            <textarea id="promptInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-purple-500 resize-none" placeholder="e.g., A cute cat driving a car in space, cartoon style..."></textarea>
+        </div>
+
+        <button id="generateBtn" onclick="generateVideo()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition glow-btn text-sm cursor-pointer">
+            Generate Video ✨
+        </button>
+
+        <div id="videoContainer" class="hidden space-y-4">
+            <!-- crossorigin="anonymous" बहुत ज़रूरी है ताकि ब्राउज़र डाउनलोड ब्लॉक न करे -->
+            <video id="outputVideo" controls crossorigin="anonymous" playsinline loop muted class="w-full rounded-xl border border-slate-700 bg-black"></video>
+            
+            <button id="downloadBtn" onclick="downloadWithWatermark()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-sm cursor-pointer">
+                📥 Download Watermarked Video
+            </button>
+        </div>
+    </main>
+
+    <!-- वॉटरमार्क प्रोसेस करने के लिए छुपा हुआ Canvas -->
+    <canvas id="watermarkCanvas" class="hidden"></canvas>
+    
+    <footer class="text-[10px] text-slate-600 py-2">Powered by Free AI Models</footer>
+
+    <script>
+        let generatedVideoUrl = "";
+
+        async function generateVideo() {
+            const prompt = document.getElementById('promptInput').value;
+            const btn = document.getElementById('generateBtn');
+            
+            if(!prompt.trim()) return alert("Pehle kuch likhiye!");
+            
+            btn.disabled = true;
+            btn.innerText = "Generating AI Video... ⏳";
+
+            try {
+                // 3 सेकंड का नकली टाइमर (असल में AI फील देने के लिए)
+                setTimeout(() => {
+                    // ठीक किया: यहाँ w3schools हटाकर एक असली ओपन-सोर्स MP4 वीडियो लिंक डाला है
+                    generatedVideoUrl = "https://googleapis.com";
+                    
+                    const video = document.getElementById('outputVideo');
+                    video.src = generatedVideoUrl;
+                    
+                    document.getElementById('videoContainer').classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerText = "Generate Video ✨";
+                    
+                    video.play();
+                }, 3000);
+            } catch (error) {
+                alert("Error aaya, fir se try karein!");
+                btn.disabled = false;
+                btn.innerText = "Generate Video ✨";
+            }
+        }
+
+        function downloadWithWatermark() {
+            const video = document.getElementById('outputVideo');
+            const canvas = document.getElementById('watermarkCanvas');
+            const ctx = canvas.getContext('2d');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            if (!video.src) return alert("Pehle video generate kijiye!");
+
+            // बटन को लोडिंग स्टेट में डालें
+            downloadBtn.disabled = true;
+            downloadBtn.innerText = "Processing Video... ⚙️";
+
+            // वीडियो रिज़ॉल्यूशन के हिसाब से कैनवास सेट करें
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 360;
+
+            // वीडियो को शुरुआत से चलाएं ताकि पूरा रिकॉर्ड हो
+            video.currentTime = 0;
+            video.play();
+
+            // MediaRecorder की मदद से कैनवास स्क्रीन को रिकॉर्ड करना
+            const stream = canvas.captureStream(30); // 30 FPS पर रिकॉर्डिंग
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                // रिकॉर्ड किए गए डेटा को वीडियो फाइल (.webm) में कन्वर्ट करना
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+
+                // मोबाइल/पीसी में फाइल डाउनलोड ट्रिगर करना
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = "ai-magic-video.webm";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // बटन वापस ठीक करें
+                downloadBtn.disabled = false;
+                downloadBtn.innerText = "📥 Download Watermarked Video";
+                alert("आपका वॉटरमार्क वाला वीडियो डाउनलोड हो गया है!");
+            };
+
+            recorder.start();
+
+            // यह फंक्शन वीडियो के हर फ्रेम पर आपका नाम छापेगा
+            function drawFrame() {
+                if (video.paused || video.ended) {
+                    recorder.stop(); // वीडियो रुकते ही रिकॉर्डिंग बंद
+                    return;
+                }
+
+                // 1. कैनवास पर करंट वीडियो फ्रेम छापो
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // 2. वॉटरमार्क टेक्स्ट का स्टाइल सेट करो
+                ctx.font = "bold 20px Arial";
+                ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; // हल्का ट्रांसपेरेंट सफ़ेद
+                ctx.shadowColor = "black"; // टेक्स्ट के पीछे काली शैडो (ताकि साफ़ दिखे)
+                ctx.shadowBlur = 4;
+
+                const watermarkText = "www.ApniWebsite.page.gd";
+                const textWidth = ctx.measureText(watermarkText).width;
+                
+                // वॉटरमार्क को नीचे राइट साइड (Bottom-Right) में सेट करना
+                ctx.fillText(watermarkText, canvas.width - textWidth - 20, canvas.height - 20);
+
+                // अगले फ्रेम को रेंडर करने के लिए लूप
+                requestAnimationFrame(drawFrame);
+            }
+
+            // फ्रेम ड्राइंग शुरू करें
+            drawFrame();
+        }
+    </script>
+</body>
+</html>
